@@ -1,0 +1,2 @@
+use cayley
+db.dropDatabase()
