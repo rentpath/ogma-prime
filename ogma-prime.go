@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	// "flag"
 	"fmt"
+	"net/http"
 	"os"
 	// "runtime"
 	"time"
@@ -13,13 +14,13 @@ import (
 
 	cayleyConfig "github.com/google/cayley/config"
 	cayleyDb "github.com/google/cayley/db"
-	// "github.com/google/cayley/graph"
-	// "github.com/google/cayley/http"
+	cayleyGraph "github.com/google/cayley/graph"
 	// "github.com/google/cayley/internal"
 
 	_ "github.com/google/cayley/graph/mongo"
-
 	_ "github.com/google/cayley/writer"
+
+	"github.com/julienschmidt/httprouter"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -47,6 +48,7 @@ func (config *ogmaPrimeConfig) CayleyConfig() (cayley *cayleyConfig.Config) {
 	cayley = &cayleyConfig.Config{
 		DatabaseType: config.DatabaseType,
 		DatabasePath: config.DatabasePath,
+		ReplicationType: "single",
 		Timeout:      time.Duration(20 * time.Second),
 	}
 
@@ -219,4 +221,27 @@ func showConfigAction(c *cli.Context) {
 }
 
 func serveAction(c *cli.Context) {
+	config := loadConfigOn(c)
+	cayConfig := config.CayleyConfig()
+
+	graph, err := cayleyDb.Open(cayConfig)
+	if err != nil {
+		log.Fatalf("Cannot open database: %v", err)
+	}
+
+	serveInstallRoutes(graph, cayConfig)
+
+	log.Infof("Listening on %s:%s", config.ListenHost, config.ListenPort)
+	err = http.ListenAndServe(fmt.Sprintf("%s:%s", config.ListenHost, config.ListenPort), nil)
+	if err != nil {
+		log.Fatalf("Cannot listen and serve on %s:%s: %v", config.ListenHost, config.ListenPort, err)
+	}
+}
+
+func serveInstallApiV1(router *httprouter.Router) {
+}
+
+func serveInstallRoutes(graph *cayleyGraph.Handle, config *cayleyConfig.Config) {
+	router := httprouter.New()
+	serveInstallApiV1(router)
 }
