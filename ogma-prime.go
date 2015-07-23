@@ -2,13 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
+	// "flag"
 	"fmt"
 	"os"
 	// "runtime"
 	"time"
-
-	"github.com/barakmich/glog"
 
 	"github.com/codegangsta/cli"
 
@@ -21,11 +19,8 @@ import (
 	_ "github.com/google/cayley/graph/mongo"
 
 	_ "github.com/google/cayley/writer"
-)
 
-var (
-	cpuProfile         = flag.String("prof", "", "Output profiling file.")
-	configFile         = flag.String("config", "./config.json", "Path to a configuration file.")
+	log "github.com/Sirupsen/logrus"
 )
 
 // Filled in by `go build -ldflags="-X main.Version `ver`"`.
@@ -44,19 +39,20 @@ type ogmaPrimeConfig struct {
 	Timeout duration `json:"timeout"`
 }
 
-func configFrom(file string) (*ogmaPrimeConfig, error) {
-	if file != "" {
-		if _, err := os.Stat(file); os.IsNotExist(err) {
-			glog.Fatalln("Cannot find specified configuration file", file, ", aborting.")
-		}
-	} else if _, err := os.Stat(os.Getenv("OGMA_PRIME_CONFIG")); err == nil {
-		file = os.Getenv("OGMA_PRIME_CONFIG")
-	}
+func loadConfigOn(c *cli.Context) (config *ogmaPrimeConfig, err error) {
+	config, err = loadConfigFrom(c.GlobalString("config"))
+	return
+}
 
+func loadConfigFrom(file string) (*ogmaPrimeConfig, error) {
 	config := &ogmaPrimeConfig{}
 
 	if file == "" {
 		return config, nil
+	}
+
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		log.Fatalf("Cannot find specified configuration file %q, aborting", file)
 	}
 
 	hnd, err := os.Open(file)
@@ -71,14 +67,56 @@ func configFrom(file string) (*ogmaPrimeConfig, error) {
 		return nil, fmt.Errorf("could not parse config file %q: %v", file, err)
 	}
 
+	setConfigDefaults(config)
 	return config, nil
+}
+
+func setConfigDefaults(config *ogmaPrimeConfig) {
+	if config.DatabaseType == "" {
+		config.DatabaseType = "mongo"
+	}
+
+	if config.DatabasePath == "" {
+		config.DatabasePath = "localhost:27017"
+	}
+
+	if config.ListenHost == "" {
+		config.ListenHost = "0.0.0.0"
+	}
+
+	if config.ListenPort == "" {
+		config.ListenPort = "22327"
+	}
 }
 
 func main() {
 	ogma := cli.NewApp()
 	ogma.Name = "ogma"
 	ogma.Version = Version
+
+	ogma.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name: "config, c",
+			Value: "./data/config.json",
+			Usage: "Path to a configuration file",
+			EnvVar: "OGMA_PRIME_CONFIG",
+		},
+		cli.BoolFlag{
+			Name: "dump-profile",
+			Usage: "Dump profiling information to a file",
+		},
+	}
+
 	ogma.Commands = []cli.Command{
+		{
+			Name: "init",
+			Usage: "Initialize and bootstrap",
+		},
+		{
+			Name: "show-config",
+			Usage: "Show configuration settings and exit",
+			Action: configAction,
+		},
 		{
 			Name: "serve",
 			Aliases: []string{"s", "srv"},
@@ -86,7 +124,17 @@ func main() {
 			Action: serveAction,
 		},
 	}
+
 	ogma.Run(os.Args)
+}
+
+func configAction(c *cli.Context) {
+	config, err := loadConfigOn(c)
+	if err != nil {
+		log.Fatalf("Cannot load configuration file: %v", err)
+	}
+
+	log.Infof("Current configuration: %v", config)
 }
 
 func serveAction(c *cli.Context) {
