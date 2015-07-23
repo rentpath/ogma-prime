@@ -11,8 +11,8 @@ import (
 
 	"github.com/codegangsta/cli"
 
-	_ "github.com/google/cayley/config"
-	// "github.com/google/cayley/db"
+	cayleyConfig "github.com/google/cayley/config"
+	cayleyDb "github.com/google/cayley/db"
 	// "github.com/google/cayley/graph"
 	// "github.com/google/cayley/http"
 	// "github.com/google/cayley/internal"
@@ -38,6 +38,16 @@ type ogmaPrimeConfig struct {
 	ListenHost string `json:"listen_host"`
 	ListenPort string `json:"listen_port"`
 	Timeout duration `json:"timeout"`
+}
+
+func (config *ogmaPrimeConfig) CayleyConfig() (cayley *cayleyConfig.Config) {
+	cayley = &cayleyConfig.Config{
+		DatabaseType: config.DatabaseType,
+		DatabasePath: config.DatabasePath,
+		Timeout:      time.Duration(20 * time.Second),
+	}
+
+	return
 }
 
 func loadConfigOn(c *cli.Context) (config *ogmaPrimeConfig) {
@@ -135,7 +145,11 @@ func main() {
 }
 
 func initAction(c *cli.Context) {
-
+	config := loadConfigOn(c)
+	err := cayleyDb.Init(config.CayleyConfig())
+	if err != nil {
+		log.Fatalf("Could not bootstrap database: %v", err)
+	}
 }
 
 func showConfigAction(c *cli.Context) {
