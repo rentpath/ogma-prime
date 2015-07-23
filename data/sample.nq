@@ -1,0 +1,15 @@
+</people/ripta_pasay> <name> "Ripta Pasay" .
+</people/ripta_pasay> <lives_in> </locations/cities/santa_monica> .
+</locations/cities/santa_monica> <name> "Santa Monica" .
+</locations/cities/santa_monica> <is_in> </locations/states/california> .
+</locations/states/california> <name> "California" .
+</locations/states/california> <abbrev> "CA" .
+</locations/states/california> <is_in> </locations/countries/usa> .
+</people/alan_voss> <name> "Alan Voss" .
+</people/alan_voss> <lives_in> </locations/cities/seattle> .
+</locations/cities/seattle> <name> "Seattle" .
+</locations/cities/seattle> <is_in> </locations/states/washington> .
+</locations/states/washington> <name> "Washington" .
+</locations/states/washington> <abbrev> "WA" .
+</locations/states/washington> <is_in> </locations/countries/usa> .
+</people/ripta_pasay> <friends_with> </people/alan_voss> .
