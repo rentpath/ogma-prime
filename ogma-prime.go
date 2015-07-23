@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	// "flag"
 	"fmt"
@@ -115,7 +116,7 @@ func main() {
 		{
 			Name: "show-config",
 			Usage: "Show configuration settings and exit",
-			Action: configAction,
+			Action: showConfigAction,
 		},
 		{
 			Name: "serve",
@@ -128,13 +129,21 @@ func main() {
 	ogma.Run(os.Args)
 }
 
-func configAction(c *cli.Context) {
+func showConfigAction(c *cli.Context) {
 	config, err := loadConfigOn(c)
 	if err != nil {
 		log.Fatalf("Cannot load configuration file: %v", err)
 	}
 
-	log.Infof("Current configuration: %v", config)
+	dump, err := json.Marshal(config)
+	if err != nil {
+		log.Fatalf("Cannot dump configuration data: %v", err)
+	}
+
+	var buf bytes.Buffer
+	json.Indent(&buf, dump, "", "  ")
+	buf.WriteString("\n")
+	buf.WriteTo(os.Stdout)
 }
 
 func serveAction(c *cli.Context) {
