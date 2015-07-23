@@ -22,6 +22,9 @@ import (
 	_ "github.com/google/cayley/writer"
 
 	log "github.com/Sirupsen/logrus"
+
+	"gopkg.in/mgo.v2"
+	// "gopkg.in/mgo.v2/bson"
 )
 
 // Filled in by `go build -ldflags="-X main.Version `ver`"`.
@@ -124,6 +127,11 @@ func main() {
 
 	ogma.Commands = []cli.Command{
 		{
+			Name: "dump",
+			Usage: "Dump Cayley contents",
+			Action: dumpAction,
+		},
+		{
 			Name: "init",
 			Usage: "Bootstrap and initialize",
 			Action: initAction,
@@ -152,6 +160,51 @@ func initAction(c *cli.Context) {
 	}
 }
 
+func mongoSession(config *ogmaPrimeConfig) (session *mgo.Session, err error) {
+	session, err = mgo.Dial(config.DatabasePath)
+	return
+}
+
+func mongoShow(config *ogmaPrimeConfig) {
+	session, err := mongoSession(config)
+	if err != nil {
+		log.Fatalf("Cannot connect to MongoDB: %v", err)
+	}
+
+	// dbs, err := session.DatabaseNames()
+	// if err != nil {
+	// 	log.Fatalf("Cannot retrieve database names: %v\n", err)
+	// }
+
+	// fmt.Printf("Available databases are: %v\n", dbs)
+
+	db := session.DB("cayley")
+	collection := db.C("quads")
+	query := collection.Find(nil)
+
+	count, err := query.Count()
+	if err != nil {
+		log.Errorf("Cannot count result set: %v", err)
+	}
+	fmt.Printf("Found %d results:\n", count)
+
+	cursor := query.Iter()
+
+	var result *interface{}
+	for cursor.Next(&result) {
+		fmt.Printf("%v\n", result)
+	}
+
+	if err = cursor.Close(); err != nil {
+		log.Fatalf("Cannot close cursor: %v", err)
+	}
+}
+
+func dumpAction(c *cli.Context) {
+	config := loadConfigOn(c)
+	mongoShow(config)
+}
+
 func showConfigAction(c *cli.Context) {
 	config := loadConfigOn(c)
 	dump, err := json.Marshal(config)
@@ -166,5 +219,4 @@ func showConfigAction(c *cli.Context) {
 }
 
 func serveAction(c *cli.Context) {
-	println("test")
 }
