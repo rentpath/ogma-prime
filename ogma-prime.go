@@ -40,8 +40,12 @@ type ogmaPrimeConfig struct {
 	Timeout duration `json:"timeout"`
 }
 
-func loadConfigOn(c *cli.Context) (config *ogmaPrimeConfig, err error) {
-	config, err = loadConfigFrom(c.GlobalString("config"))
+func loadConfigOn(c *cli.Context) (config *ogmaPrimeConfig) {
+	config, err := loadConfigFrom(c.GlobalString("config"))
+	if err != nil {
+		log.Fatalf("Cannot load configuration file: %v", err)
+	}
+
 	return
 }
 
@@ -111,7 +115,8 @@ func main() {
 	ogma.Commands = []cli.Command{
 		{
 			Name: "init",
-			Usage: "Initialize and bootstrap",
+			Usage: "Bootstrap and initialize",
+			Action: initAction,
 		},
 		{
 			Name: "show-config",
@@ -129,12 +134,12 @@ func main() {
 	ogma.Run(os.Args)
 }
 
-func showConfigAction(c *cli.Context) {
-	config, err := loadConfigOn(c)
-	if err != nil {
-		log.Fatalf("Cannot load configuration file: %v", err)
-	}
+func initAction(c *cli.Context) {
 
+}
+
+func showConfigAction(c *cli.Context) {
+	config := loadConfigOn(c)
 	dump, err := json.Marshal(config)
 	if err != nil {
 		log.Fatalf("Cannot dump configuration data: %v", err)
