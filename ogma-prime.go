@@ -270,7 +270,11 @@ func apiLogger(graph *cayleyGraph.Handle, handler graphHandler) apiHandler {
 
 func findProperty(graph *cayleyGraph.Handle, rsp http.ResponseWriter, req *http.Request) int {
 	result := make(map[string]interface{})
+
+	pathVars := mux.Vars(req)
+	result["id"] = pathVars["id"]
+
 	bytes, _ := json.MarshalIndent(result, "", "  ")
-	fmt.Fprint(rsp, string(bytes))
+	fmt.Fprintln(rsp, string(bytes))
 	return 200
 }
