@@ -3,11 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	// "flag"
 	"fmt"
 	"net/http"
 	"os"
-	// "runtime"
 	"time"
 
 	"github.com/codegangsta/cli"
@@ -15,7 +13,6 @@ import (
 	cayleyConfig "github.com/google/cayley/config"
 	cayleyDb "github.com/google/cayley/db"
 	cayleyGraph "github.com/google/cayley/graph"
-	// "github.com/google/cayley/internal"
 
 	_ "github.com/google/cayley/graph/mongo"
 	_ "github.com/google/cayley/writer"
