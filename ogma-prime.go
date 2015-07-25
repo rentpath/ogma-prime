@@ -20,7 +20,7 @@ import (
 	_ "github.com/google/cayley/graph/mongo"
 	_ "github.com/google/cayley/writer"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/gorilla/mux"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -229,7 +229,7 @@ func serveAction(c *cli.Context) {
 		log.Fatalf("Cannot open database: %v", err)
 	}
 
-	serveInstallRoutes(graph, cayConfig)
+	http.Handle("/", serveInstallRoutes(graph, cayConfig))
 
 	log.Infof("Listening on %s:%s", config.ListenHost, config.ListenPort)
 	err = http.ListenAndServe(fmt.Sprintf("%s:%s", config.ListenHost, config.ListenPort), nil)
@@ -238,20 +238,22 @@ func serveAction(c *cli.Context) {
 	}
 }
 
-func serveInstallApiV1(graph *cayleyGraph.Handle) *httprouter.Router {
-	router := httprouter.New()
-	router.GET("/properties/:id", apiLogger(graph, findProperty))
-	return router
+func serveInstallApiV1(router *mux.Router, graph *cayleyGraph.Handle) {
+	router.HandleFunc("/properties/{id}", apiLogger(graph, findProperty)).Methods("GET")
 }
 
-func serveInstallRoutes(graph *cayleyGraph.Handle, config *cayleyConfig.Config) {
-	http.Handle("/api/v1", serveInstallApiV1(graph))
+func serveInstallRoutes(graph *cayleyGraph.Handle, config *cayleyConfig.Config) *mux.Router {
+	root := mux.NewRouter()
+	serveInstallApiV1(root.PathPrefix("/api/v1").Subrouter(), graph)
+
+	return root
 }
 
-type apiHandler func(graph *cayleyGraph.Handle, rsp http.ResponseWriter, req *http.Request, params httprouter.Params) int
+type apiHandler func(http.ResponseWriter, *http.Request)
+type graphHandler func(graph *cayleyGraph.Handle, rsp http.ResponseWriter, req *http.Request) int
 
-func apiLogger(graph *cayleyGraph.Handle, handler apiHandler) httprouter.Handle {
-	return func(rsp http.ResponseWriter, req *http.Request, params httprouter.Params) {
+func apiLogger(graph *cayleyGraph.Handle, handler graphHandler) apiHandler {
+	return func(rsp http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 		addr := req.Header.Get("X-Real-IP")
 		if addr == "" {
@@ -261,12 +263,12 @@ func apiLogger(graph *cayleyGraph.Handle, handler apiHandler) httprouter.Handle 
 			}
 		}
 
-		retcode := handler(graph, rsp, req, params)
+		retcode := handler(graph, rsp, req)
 		log.Infof("%s %s %d %v %s", req.Method, addr, retcode, time.Since(start), req.URL.Path)
 	}
 }
 
-func findProperty(graph *cayleyGraph.Handle, rsp http.ResponseWriter, req *http.Request, params httprouter.Params) int {
+func findProperty(graph *cayleyGraph.Handle, rsp http.ResponseWriter, req *http.Request) int {
 	result := make(map[string]interface{})
 	bytes, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Fprint(rsp, string(bytes))
