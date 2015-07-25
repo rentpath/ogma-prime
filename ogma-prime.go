@@ -238,10 +238,37 @@ func serveAction(c *cli.Context) {
 	}
 }
 
-func serveInstallApiV1(router *httprouter.Router) {
+func serveInstallApiV1(graph *cayleyGraph.Handle) *httprouter.Router {
+	router := httprouter.New()
+	router.GET("/properties/:id", apiLogger(graph, findProperty))
+	return router
 }
 
 func serveInstallRoutes(graph *cayleyGraph.Handle, config *cayleyConfig.Config) {
-	router := httprouter.New()
-	serveInstallApiV1(router)
+	http.Handle("/api/v1", serveInstallApiV1(graph))
+}
+
+type apiHandler func(graph *cayleyGraph.Handle, rsp http.ResponseWriter, req *http.Request, params httprouter.Params) int
+
+func apiLogger(graph *cayleyGraph.Handle, handler apiHandler) httprouter.Handle {
+	return func(rsp http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		start := time.Now()
+		addr := req.Header.Get("X-Real-IP")
+		if addr == "" {
+			addr = req.Header.Get("X-Forwarded-For")
+			if addr == "" {
+				addr = req.RemoteAddr
+			}
+		}
+
+		retcode := handler(graph, rsp, req, params)
+		log.Infof("%s %s %d %v %s", req.Method, addr, retcode, time.Since(start), req.URL.Path)
+	}
+}
+
+func findProperty(graph *cayleyGraph.Handle, rsp http.ResponseWriter, req *http.Request, params httprouter.Params) int {
+	result := make(map[string]interface{})
+	bytes, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Fprint(rsp, string(bytes))
+	return 200
 }
