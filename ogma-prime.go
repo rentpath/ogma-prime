@@ -34,19 +34,19 @@ var (
 type duration time.Duration
 
 type ogmaPrimeConfig struct {
-	DatabaseType string `json:"database_type"`
-	DatabasePath string `json:"database_string"`
-	ListenHost string `json:"listen_host"`
-	ListenPort string `json:"listen_port"`
-	Timeout duration `json:"timeout"`
+	DatabaseType string   `json:"database_type"`
+	DatabasePath string   `json:"database_string"`
+	ListenHost   string   `json:"listen_host"`
+	ListenPort   string   `json:"listen_port"`
+	Timeout      duration `json:"timeout"`
 }
 
 func (config *ogmaPrimeConfig) CayleyConfig() (cayley *cayleyConfig.Config) {
 	cayley = &cayleyConfig.Config{
-		DatabaseType: config.DatabaseType,
-		DatabasePath: config.DatabasePath,
+		DatabaseType:    config.DatabaseType,
+		DatabasePath:    config.DatabasePath,
 		ReplicationType: "single",
-		Timeout:      time.Duration(20 * time.Second),
+		Timeout:         time.Duration(20 * time.Second),
 	}
 
 	return
@@ -113,38 +113,38 @@ func main() {
 
 	ogma.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name: "config, c",
-			Value: "./data/config.json",
-			Usage: "Path to a configuration file",
+			Name:   "config, c",
+			Value:  "./data/config.json",
+			Usage:  "Path to a configuration file",
 			EnvVar: "OGMA_PRIME_CONFIG",
 		},
 		cli.BoolFlag{
-			Name: "dump-profile",
+			Name:  "dump-profile",
 			Usage: "Dump profiling information to a file",
 		},
 	}
 
 	ogma.Commands = []cli.Command{
 		{
-			Name: "dump",
-			Usage: "Dump Cayley contents",
+			Name:   "dump",
+			Usage:  "Dump Cayley contents",
 			Action: dumpAction,
 		},
 		{
-			Name: "init",
-			Usage: "Bootstrap and initialize",
+			Name:   "init",
+			Usage:  "Bootstrap and initialize",
 			Action: initAction,
 		},
 		{
-			Name: "show-config",
-			Usage: "Show configuration settings and exit",
+			Name:   "show-config",
+			Usage:  "Show configuration settings and exit",
 			Action: showConfigAction,
 		},
 		{
-			Name: "serve",
+			Name:    "serve",
 			Aliases: []string{"s", "srv"},
-			Usage: "Serve HTTP",
-			Action: serveAction,
+			Usage:   "Serve HTTP",
+			Action:  serveAction,
 		},
 	}
 
