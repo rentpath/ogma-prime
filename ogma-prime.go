@@ -13,6 +13,8 @@ import (
 	cayleyConfig "github.com/google/cayley/config"
 	cayleyDb "github.com/google/cayley/db"
 	cayleyGraph "github.com/google/cayley/graph"
+	cayleyGremlin "github.com/google/cayley/query/gremlin"
+	cayleyQuery "github.com/google/cayley/query"
 
 	_ "github.com/google/cayley/graph/mongo"
 	_ "github.com/google/cayley/writer"
@@ -267,11 +269,48 @@ func apiLogger(graph *cayleyGraph.Handle, handler graphHandler) apiHandler {
 
 func findProperty(graph *cayleyGraph.Handle, rsp http.ResponseWriter, req *http.Request) int {
 	result := make(map[string]interface{})
+	retcode := 200
 
 	pathVars := mux.Vars(req)
-	result["id"] = pathVars["id"]
+	result["request"] = pathVars
+
+	session := cayleyGremlin.NewSession(graph.QuadStore, time.Duration(10 * time.Second), false)
+	gremlinQuery := fmt.Sprintf(`g.V("/properties/%s").All()`, pathVars["id"])
+
+	queryResult, err := session.Parse(gremlinQuery)
+	switch queryResult {
+	case cayleyQuery.Parsed:
+		output, err := runGremlinQuery(gremlinQuery, session)
+		if err != nil {
+			result["success"] = false
+			result["error"] = err
+			retcode = 400
+			break
+		}
+
+		result["success"] = true
+		result["output"] = output
+	case cayleyQuery.ParseFail:
+		result["success"] = false
+		result["error"] = fmt.Sprintf("Failed to parse query: %s", err)
+		retcode = 400
+	default:
+		result["success"] = false
+		result["error"] = "Possibly incomplete data or query?"
+		retcode = 500
+	}
 
 	bytes, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Fprintln(rsp, string(bytes))
-	return 200
+	return retcode
+}
+
+func runGremlinQuery(q string, session cayleyQuery.HTTP) (interface{}, error) {
+	c := make(chan interface{}, 5)
+	go session.Execute(q, c, 100)
+	for result := range c {
+		session.Collate(result)
+	}
+
+	return session.Results()
 }
